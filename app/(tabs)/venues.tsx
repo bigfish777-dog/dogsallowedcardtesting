@@ -11,71 +11,74 @@ type Venue = {
   address?: string;
   description?: string;
   longDescription?: string;
-  deal?: string;          // e.g. "10% Off Food & Hot Drinks"
+  deal?: string;
   features?: string[];
-  postcode?: string;      // optional if you add it later
+  postcode?: string;
 };
 
 function stripBracketedLocation(name: string) {
-  // Remove trailing " (Something)" from names like "Café Morso (Bromsgrove)"
   return name.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
 function extractCity(address?: string) {
   if (!address) return '';
-  // Try the segment after the first comma
   const parts = address.split(',').map(p => p.trim()).filter(Boolean);
   const seg = parts.length >= 2 ? parts[1] : parts[parts.length - 1] || '';
-  // Remove UK postcode if present (rough match, safe fallback)
   const POSTCODE = /\b([A-Z]{1,2}\d[A-Z\d]?\s*\d[A-Z]{2})\b/i;
   return seg.replace(POSTCODE, '').trim();
 }
 
 function shortLineFor(v: Venue) {
-  // Prefer the deal (usually ~4–8 words). Otherwise take first 8–10 words of description.
   if (typeof v.deal === 'string' && v.deal.trim()) return v.deal.trim();
-
-  const text = (typeof v.description === 'string' && v.description.trim())
-    ? v.description.trim()
-    : (typeof v.longDescription === 'string' && v.longDescription.trim())
-      ? v.longDescription.trim()
-      : '';
-
+  const text =
+    (typeof v.description === 'string' && v.description.trim()) ||
+    (typeof v.longDescription === 'string' && v.longDescription.trim()) ||
+    '';
   if (!text) return 'Dog-friendly venue';
-  const words = text.split(/\s+/).slice(0, 10).join(' ');
-  return words + (text.split(/\s+/).length > 10 ? '…' : '');
+  const words = text.split(/\s+/);
+  const first = words.slice(0, 10).join(' ');
+  return first + (words.length > 10 ? '…' : '');
 }
 
 export default function VenuesScreen() {
   const [q, setQ] = useState('');
-  const [favs, setFavs] = useState<string[]>([]); // in-memory for now (no AsyncStorage yet)
+  const [favs, setFavs] = useState<string[]>([]); // in-memory for now
+  const [onlyFavs, setOnlyFavs] = useState(false);
 
   const toggleFav = useCallback((id: string) => {
     setFavs(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
   }, []);
 
-  const results = useMemo(() => {
-    const s = q.trim().toLowerCase();
+  const shaped = useMemo(() => {
     const list: Venue[] = Array.isArray(venues) ? (venues as any) : [];
-    const shaped = list.map(v => {
+    return list.map(v => {
       const city = extractCity(v.address);
       const title = stripBracketedLocation(v.name);
       const short = shortLineFor(v);
       return { ...v, city, title, short } as any;
     });
+  }, []);
 
-    if (!s) return shaped;
-    return shaped.filter(v =>
-      (v.title && (v.title as string).toLowerCase().includes(s)) ||
-      (v.city && (v.city as string).toLowerCase().includes(s)) ||
-      (v.short && (v.short as string).toLowerCase().includes(s)) ||
-      (v.address && (v.address as string).toLowerCase().includes(s))
-    );
-  }, [q]);
+  const results = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    let items = shaped;
+    if (s) {
+      items = items.filter(v =>
+        (v.title && (v.title as string).toLowerCase().includes(s)) ||
+        (v.city && (v.city as string).toLowerCase().includes(s)) ||
+        (v.short && (v.short as string).toLowerCase().includes(s)) ||
+        (v.address && (v.address as string).toLowerCase().includes(s))
+      );
+    }
+    if (onlyFavs) {
+      items = items.filter(v => favs.includes(String(v.id)));
+    }
+    return items;
+  }, [q, onlyFavs, favs, shaped]);
 
-  return (
-    <View style={styles.screen}>
-      {/* Search with magnifying glass (inside) */}
+  // Sticky header (search + toggle)
+  const renderHeader = () => (
+    <View style={styles.headerWrap}>
       <View style={styles.searchRow}>
         <Ionicons name="search" size={18} color="#6B7B8C" style={styles.searchIcon} />
         <TextInput
@@ -89,16 +92,42 @@ export default function VenuesScreen() {
         />
       </View>
 
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          onPress={() => setOnlyFavs(false)}
+          style={[styles.toggleBtn, !onlyFavs && styles.toggleBtnActive]}
+        >
+          <Text style={[styles.toggleTxt, !onlyFavs && styles.toggleTxtActive]}>All</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setOnlyFavs(true)}
+          style={[styles.toggleBtn, onlyFavs && styles.toggleBtnActive]}
+        >
+          <Ionicons
+            name={onlyFavs ? 'heart' : 'heart-outline'}
+            size={14}
+            color={onlyFavs ? '#ffffff' : '#6B7B8C'}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={[styles.toggleTxt, onlyFavs && styles.toggleTxtActive]}>Fur‑vourites</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.screen}>
       <FlatList
         data={results}
         keyExtractor={(i: any) => String(i.id)}
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        ListHeaderComponent={renderHeader}
+        stickyHeaderIndices={[0]} // keep header visible
         renderItem={({ item }: { item: any }) => {
           const liked = favs.includes(item.id);
           return (
             <View style={styles.card}>
-              {/* Heart (G) */}
               <TouchableOpacity
                 onPress={() => toggleFav(item.id)}
                 style={styles.heartBtn}
@@ -111,13 +140,8 @@ export default function VenuesScreen() {
                 />
               </TouchableOpacity>
 
-              {/* Title (D) – no bracketed location */}
               <Text style={styles.title}>{item.title}</Text>
-
-              {/* City only (E – no postcode) */}
               {!!item.city && <Text style={styles.meta}>{item.city}</Text>}
-
-              {/* Short line / deal (C) */}
               {!!item.short && <Text style={styles.deal}>{item.short}</Text>}
 
               <Link href={{ pathname: '/venue/[id]', params: { id: String(item.id) } }} asChild>
@@ -131,7 +155,7 @@ export default function VenuesScreen() {
         ListFooterComponent={<View style={{ height: 24 }} />}
       />
 
-      {/* Bottom safe pad (A/F): matches the tab bar background so no grey overlay */}
+      {/* Bottom pad to match tab bar color (#121212) */}
       <View style={styles.bottomSafePad} />
     </View>
   );
@@ -142,6 +166,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F7FBFC',
   },
+
+  headerWrap: {
+    backgroundColor: '#F7FBFC', // same as screen so sticky header blends
+    paddingTop: 8,
+  },
+
   // Search
   searchRow: {
     flexDirection: 'row',
@@ -152,15 +182,45 @@ const styles = StyleSheet.create({
     borderColor: '#E5EDF3',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    margin: 16,
-    marginBottom: 12,
+    marginHorizontal: 16,
+    marginBottom: 10,
   },
   searchIcon: { marginRight: 8 },
   searchInput: { flex: 1, height: 36, color: '#1F2D3D' },
 
+  // Toggle row
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  toggleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: '#E9F2F6',
+    borderWidth: 1,
+    borderColor: '#DCE7ED',
+  },
+  toggleBtnActive: {
+    backgroundColor: '#2EC4B6',
+    borderColor: '#2EC4B6',
+  },
+  toggleTxt: {
+    color: '#6B7B8C',
+    fontWeight: '700',
+  },
+  toggleTxtActive: {
+    color: '#ffffff',
+  },
+
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 100, // ensures cards never tuck under the tab bar / home indicator
+    paddingBottom: 100,
   },
 
   // Card
