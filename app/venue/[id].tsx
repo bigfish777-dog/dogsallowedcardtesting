@@ -55,7 +55,18 @@ export default function VenueDetails() {
   if (!v) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Venue not found' }} />
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'Venue not found',
+            headerLeft: () => (
+              <TouchableOpacity style={styles.back} onPress={() => router.back()}>
+                <Ionicons name="chevron-back" size={22} color="#0EA5A1" />
+                <Text style={styles.backTxt}>Back</Text>
+              </TouchableOpacity>
+            ),
+          }}
+        />
         <Text style={{ padding: 16 }}>We couldn’t find that venue.</Text>
       </View>
     );
@@ -69,6 +80,7 @@ export default function VenueDetails() {
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 28 }}>
       <Stack.Screen
         options={{
+          headerShown: true, // <- ensure header is visible on this screen
           headerTitle: v.name,
           headerLeft: () => (
             <TouchableOpacity style={styles.back} onPress={() => router.back()}>
@@ -82,7 +94,11 @@ export default function VenueDetails() {
               style={{ paddingHorizontal: 4, paddingVertical: 4 }}
               hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
             >
-              <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? '#E63946' : '#7B8A97'} />
+              <Ionicons
+                name={liked ? 'heart' : 'heart-outline'}
+                size={22}
+                color={liked ? '#E63946' : '#7B8A97'}
+              />
             </TouchableOpacity>
           ),
         }}
