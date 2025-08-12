@@ -1,33 +1,32 @@
+// app/_layout.tsx
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { useColorScheme } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { FavouritesProvider } from '../hooks/favourite';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  });
-
-  if (!loaded) {
-    // Async font loading only occurs in development.
-    return null;
-  }
+  const theme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#1C1C1E' }} edges={['bottom']}>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="+not-found" />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
+      {/* Only apply bottom safe area background to blend with tab bar */}
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#121212' }} edges={['bottom']}>
+        <FavouritesProvider>
+          <ThemeProvider value={theme}>
+            {/* StatusBar follows theme; override if you prefer light/dark fixed */}
+            <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+            <Stack
+              screenOptions={{
+                headerShown: false, // tab & detail screens manage their own headers
+                contentStyle: { backgroundColor: '#F7FBFC' }, // page background
+              }}
+            />
+          </ThemeProvider>
+        </FavouritesProvider>
       </SafeAreaView>
     </SafeAreaProvider>
   );

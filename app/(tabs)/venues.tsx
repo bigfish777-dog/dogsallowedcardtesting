@@ -4,6 +4,7 @@ import { Link } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import venues from '../../constants/venues';
+import { useFavourites } from '../../hooks/favourite';
 
 type Venue = {
   id: string;
@@ -17,6 +18,7 @@ type Venue = {
 };
 
 function stripBracketedLocation(name: string) {
+  // Remove trailing " (Something)" from names like "Café Morso (Bromsgrove)"
   return name.replace(/\s*\([^)]*\)\s*$/, '').trim();
 }
 
@@ -42,12 +44,9 @@ function shortLineFor(v: Venue) {
 
 export default function VenuesScreen() {
   const [q, setQ] = useState('');
-  const [favs, setFavs] = useState<string[]>([]); // in-memory for now
   const [onlyFavs, setOnlyFavs] = useState(false);
 
-  const toggleFav = useCallback((id: string) => {
-    setFavs(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
-  }, []);
+  const { favs, toggleFav, isFav } = useFavourites();
 
   const shaped = useMemo(() => {
     const list: Venue[] = Array.isArray(venues) ? (venues as any) : [];
@@ -71,12 +70,16 @@ export default function VenuesScreen() {
       );
     }
     if (onlyFavs) {
-      items = items.filter(v => favs.includes(String(v.id)));
+      items = items.filter(v => isFav(String(v.id)));
     }
     return items;
-  }, [q, onlyFavs, favs, shaped]);
+  }, [q, onlyFavs, shaped, isFav]);
 
-  // Sticky header (search + toggle)
+  const onToggleFav = useCallback((id: string) => {
+    toggleFav(String(id));
+  }, [toggleFav]);
+
+  // Sticky header (search + Fur‑vourites toggle)
   const renderHeader = () => (
     <View style={styles.headerWrap}>
       <View style={styles.searchRow}>
@@ -123,13 +126,14 @@ export default function VenuesScreen() {
         contentContainerStyle={styles.listContent}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={renderHeader}
-        stickyHeaderIndices={[0]} // keep header visible
+        stickyHeaderIndices={[0]}
         renderItem={({ item }: { item: any }) => {
-          const liked = favs.includes(item.id);
+          const liked = isFav(item.id);
           return (
             <View style={styles.card}>
+              {/* Heart on card */}
               <TouchableOpacity
-                onPress={() => toggleFav(item.id)}
+                onPress={() => onToggleFav(item.id)}
                 style={styles.heartBtn}
                 hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
               >
@@ -168,7 +172,7 @@ const styles = StyleSheet.create({
   },
 
   headerWrap: {
-    backgroundColor: '#F7FBFC', // same as screen so sticky header blends
+    backgroundColor: '#F7FBFC',
     paddingTop: 8,
   },
 

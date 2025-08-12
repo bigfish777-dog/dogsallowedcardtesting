@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
 import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import venues from '../../constants/venues';
+import { useFavourites } from '../../hooks/favourite';
 
 type Venue = {
   id: string;
@@ -27,6 +28,7 @@ function looksLikeImage(url?: string) {
 export default function VenueDetails() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { isFav, toggleFav } = useFavourites();
 
   const v: Venue | undefined = useMemo(
     () => (venues as unknown as Venue[]).find(x => String(x.id) === String(id)),
@@ -61,6 +63,7 @@ export default function VenueDetails() {
 
   const heroOk = looksLikeImage(v.image);
   const desc = v.longDescription || v.description || '';
+  const liked = isFav(v.id);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 28 }}>
@@ -71,6 +74,15 @@ export default function VenueDetails() {
             <TouchableOpacity style={styles.back} onPress={() => router.back()}>
               <Ionicons name="chevron-back" size={22} color="#0EA5A1" />
               <Text style={styles.backTxt}>Back</Text>
+            </TouchableOpacity>
+          ),
+          headerRight: () => (
+            <TouchableOpacity
+              onPress={() => toggleFav(String(v.id))}
+              style={{ paddingHorizontal: 4, paddingVertical: 4 }}
+              hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+            >
+              <Ionicons name={liked ? 'heart' : 'heart-outline'} size={22} color={liked ? '#E63946' : '#7B8A97'} />
             </TouchableOpacity>
           ),
         }}
@@ -135,6 +147,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7FBFC' },
   hero: { width: '100%', height: 220, backgroundColor: '#e7eef3' },
   content: { paddingHorizontal: 16, paddingTop: 16 },
+
   dealPill: {
     alignSelf: 'flex-start',
     flexDirection: 'row',
@@ -147,8 +160,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   dealTxt: { color: '#0EA5A1', fontWeight: '800' },
+
   metaLabel: { color: '#6B7B8C', fontSize: 12 },
   metaValue: { color: '#1F2D3D', marginTop: 2 },
+
   online: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -161,10 +176,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   onlineTxt: { color: '#0EA5A1', fontWeight: '700', maxWidth: 240 },
+
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
   chip: { backgroundColor: '#EEF6F8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
   chipTxt: { color: '#1F2D3D', fontWeight: '600' },
+
   desc: { marginTop: 14, color: '#516170', lineHeight: 20 },
+
   actions: { flexDirection: 'row', gap: 12, marginTop: 16, marginBottom: 20 },
   btn: {
     flex: 1,
@@ -178,6 +196,7 @@ const styles = StyleSheet.create({
   btnPrimary: { backgroundColor: '#2EC4B6' },
   btnDark: { backgroundColor: '#0F172A' },
   btnTxt: { color: '#fff', fontWeight: '800' },
+
   back: { flexDirection: 'row', alignItems: 'center' },
   backTxt: { marginLeft: 2, color: '#0EA5A1', fontWeight: '700' },
 });
