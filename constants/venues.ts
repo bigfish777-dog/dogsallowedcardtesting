@@ -48,10 +48,10 @@ export const venues = [
     name: 'Bayleys of Bromsgrove',
     address: '37 High Street, Bromsgrove B61 8AJ',
     phone: '01527 831338',
-    image: 'https://images.squarespace-cdn.com/content/v1/5e4f6c2e1c8f3b6c9d2e9f4a/1582212941842-7FQJX8C5R0K7Y2T6W9P3/bayleys-bromsgrove.jpg',
+    image: 'https://images.squarespace-cdn.com/content/689876b74477501d91664398/1754822330685-6SDM1UHM9RH9H03WB7SE/bayleys.jpg?content-type=image%2Fjpeg',
     deal: '10% Off Food & Hot Drinks',
     online: 'https://www.bayleysbutchers.co.uk/',
-    longDescription: "Bayleys of Bromsgrove is a family butchers and deli, famous for its high-quality meats and friendly service. Dogs are always welcome in the shop and are treated to a complimentary dog treat at the counter. With a focus on local produce and traditional values, Bayleys is a delightful stop for both you and your pooch while shopping in Bromsgrove.",
+    longDescription: "The Bayley brothers have combined their passion for great coffee, proper craft beer, and simple but delicious food, to create a coffee-shop-cum-tap-house that's rapdily captured the hearts of Bromsgrove residents.",
     isFavourite: false,
   },
 ];

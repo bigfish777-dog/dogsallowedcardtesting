@@ -2,7 +2,8 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Link } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import venues from '../../constants/venues';
 import { useFavourites } from '../../hooks/favourite';
 
@@ -45,6 +46,8 @@ function shortLineFor(v: Venue) {
 export default function VenuesScreen() {
   const [q, setQ] = useState('');
   const [onlyFavs, setOnlyFavs] = useState(false);
+
+  const { bottom } = useSafeAreaInsets();
 
   const { favs, toggleFav, isFav } = useFavourites();
 
@@ -123,7 +126,7 @@ export default function VenuesScreen() {
       <FlatList
         data={results}
         keyExtractor={(i: any) => String(i.id)}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottom + 16 }]}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={renderHeader}
         stickyHeaderIndices={[0]}
@@ -158,9 +161,6 @@ export default function VenuesScreen() {
         }}
         ListFooterComponent={<View style={{ height: 24 }} />}
       />
-
-      {/* Bottom pad to match tab bar color (#121212) */}
-      <View style={styles.bottomSafePad} />
     </View>
   );
 }
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
 
   listContent: {
     paddingHorizontal: 16,
-    paddingBottom: 100,
+    paddingBottom: 0,
   },
 
   // Card
@@ -261,9 +261,4 @@ const styles = StyleSheet.create({
   },
   btnTxt: { color: 'white', fontWeight: '700' },
 
-  // Bottom pad to match tab bar color (#121212)
-  bottomSafePad: {
-    height: Platform.OS === 'ios' ? 16 : 0,
-    backgroundColor: '#121212',
-  },
 });
