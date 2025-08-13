@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
 
   /* HERO */
   heroWrap: {
-    marginTop: 0,          // tighter under the header
+    marginTop: 8,          // tighter under the header
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
