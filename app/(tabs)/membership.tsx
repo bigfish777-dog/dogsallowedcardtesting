@@ -90,9 +90,9 @@ export default function MembershipScreen() {
   const pickFromLibrary = async () => {
     const ok = await ensureLibraryPerm();
     if (!ok) return;
-    // ⚠️ Use the backwards-compatible API for your current package version
+    // Backwards-compatible API for current package version
     const res = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // <- compat
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false,
       quality: 0.9,
     });
@@ -105,7 +105,7 @@ export default function MembershipScreen() {
     const ok = await ensureCameraPerm();
     if (!ok) return;
     const res = await ImagePicker.launchCameraAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, // <- compat
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: false,
       quality: 0.9,
     });
@@ -140,7 +140,7 @@ export default function MembershipScreen() {
             </View>
           )}
 
-          {/* overlay row: ACTIVE + change hint */}
+        {/* overlay row: ACTIVE + change hint */}
           <View style={styles.heroOverlay}>
             {MEMBERSHIP_ACTIVE && (
               <View style={styles.activePill}>
@@ -171,29 +171,26 @@ export default function MembershipScreen() {
           </View>
         </View>
 
-        {/* WALLET BUTTONS */}
+        {/* WALLET BUTTONS — styled to match Venues UI (teal primary + outline pill) */}
         <View style={styles.walletRow}>
           <TouchableOpacity
-            style={[styles.cta, styles.ctaDark]}
+            style={[styles.walletBtn, styles.walletPrimary]}
             onPress={() => Alert.alert('Apple Wallet', 'Will open a real PassKit link later.')}
           >
-            <Text style={[styles.ctaText, styles.ctaTextDark]}>Add to Apple Wallet</Text>
+            <Ionicons name="logo-apple" size={18} color="#ffffff" style={{ marginRight: 8 }} />
+            <Text style={[styles.walletTxt, styles.walletTxtPrimary]} numberOfLines={1}>Add to Apple Wallet</Text>
           </TouchableOpacity>
+
           <TouchableOpacity
-            style={[styles.cta, styles.ctaLight]}
+            style={[styles.walletBtn, styles.walletOutline]}
             onPress={() => Alert.alert('Google Wallet', 'Will open a real Wallet link later.')}
           >
-            <Text style={[styles.ctaText, styles.ctaTextLight]}>Save to Google Wallet</Text>
+            <Ionicons name="wallet-outline" size={18} color="#0EA5A1" style={{ marginRight: 8 }} />
+            <Text style={[styles.walletTxt, styles.walletTxtOutline]} numberOfLines={1}>Add to Google Wallet</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.caption}>These will open real PassKit links later.</Text>
-
-        {/* --- DEV: Direct test button (uncomment to debug) ---
-        <TouchableOpacity onPress={pickFromLibrary} style={{ margin: 16, alignItems: 'center' }}>
-          <Text style={{ color: '#0EA5A1', fontWeight: '800' }}>DEV: Pick from library directly</Text>
-        </TouchableOpacity>
-        ----------------------------------------------------- */}
       </ScrollView>
     </SafeAreaView>
   );
@@ -205,7 +202,7 @@ const styles = StyleSheet.create({
 
   /* HERO */
   heroWrap: {
-    marginTop: 8,          // tighter under the header
+    marginTop: 8,          // tight under the header
     marginHorizontal: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -290,28 +287,47 @@ const styles = StyleSheet.create({
   label: { color: '#6B7B8C', fontWeight: '700' },
   value: { color: '#1F2D3D', fontWeight: '800' },
 
-  /* WALLET */
+  /* WALLET — align with Venues UI */
   walletRow: {
-    flexDirection: 'row',
+    flexDirection: 'column',
     gap: 12,
     paddingHorizontal: 16,
-    marginTop: 16,
+    marginTop: 15,
   },
-  cta: {
-    flex: 1,
+  walletBtn: {
+    width: '100%',
+    minHeight: 50,
     borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  ctaDark: { backgroundColor: '#111111' },
-  ctaLight: {
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#E2E8EE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    flexWrap: 'wrap',
   },
-  ctaText: { fontWeight: '900', fontSize: 15 },
-  ctaTextDark: { color: '#ffffff' },
-  ctaTextLight: { color: '#1F2D3D' },
+  walletPrimary: {
+    backgroundColor: '#2EC4B6',
+    borderColor: '#2EC4B6',
+  },
+  walletOutline: {
+    backgroundColor: '#E9F2F6',
+    borderColor: '#DCE7ED',
+  },
+  walletTxt: {
+    fontWeight: '700',
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
+    maxWidth: '85%',
+    paddingHorizontal: 6,
+    paddingTop: 2,
+    flexShrink: 1,
+  },
+  walletTxtPrimary: { color: '#ffffff' },
+  walletTxtOutline: { color: '#0EA5A1' },
 
   caption: {
     color: '#6B7B8C',
