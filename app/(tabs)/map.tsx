@@ -1,7 +1,11 @@
 // app/(tabs)/map.tsx
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMemo, useState } from 'react';
-import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { LatLng, Marker } from 'react-native-maps';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import venues from '../../constants/venues';
 
@@ -10,22 +14,102 @@ type Venue = {
   name: string;
   address?: string;
   longDescription?: string;
+  lat?: number;
+  lng?: number;
 };
+
+type VenueWithCoords = Venue & { lat: number; lng: number };
+
+const GEO_CACHE_KEY = 'venueGeo:v1';
+
+async function buildVenueCoordinates(list: Venue[]): Promise<VenueWithCoords[]> {
+  const cacheRaw = await AsyncStorage.getItem(GEO_CACHE_KEY);
+  const cache: Record<string, { lat: number; lng: number }> = cacheRaw ? JSON.parse(cacheRaw) : {};
+
+  const results: VenueWithCoords[] = [];
+  for (const v of list) {
+    const id = String(v.id);
+    if (typeof v.lat === 'number' && typeof v.lng === 'number') {
+      results.push({ ...v, lat: v.lat, lng: v.lng });
+      continue;
+    }
+    if (cache[id]) {
+      results.push({ ...v, lat: cache[id].lat, lng: cache[id].lng });
+      continue;
+    }
+    if (!v.address) continue;
+    try {
+      const hit = await Location.geocodeAsync(v.address);
+      if (hit && hit.length > 0 && typeof hit[0].latitude === 'number' && typeof hit[0].longitude === 'number') {
+        const lat = hit[0].latitude;
+        const lng = hit[0].longitude;
+        cache[id] = { lat, lng };
+        results.push({ ...v, lat, lng });
+      }
+    } catch {}
+  }
+  try { await AsyncStorage.setItem(GEO_CACHE_KEY, JSON.stringify(cache)); } catch {}
+  return results;
+}
 
 export default function MapScreen() {
   const { top, bottom } = useSafeAreaInsets();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
+  const mapRef = useRef<MapView | null>(null);
 
-  const items = useMemo(() => {
-    const list: Venue[] = Array.isArray(venues) ? (venues as any) : [];
-    return list.map(v => ({ id: String(v.id), title: v.name })) as { id: string; title: string }[];
-  }, []);
+  const [isLoading, setIsLoading] = useState(true);
+  const [pins, setPins] = useState<VenueWithCoords[]>([]);
 
-  // Placeholder while we wire up a real map provider
-  const onOpenMap = (id: string) => {
-    const venue = (venues as any[]).find(v => String(v.id) === id);
-    Alert.alert('Map coming soon', venue?.name || 'Venue');
+  const list: Venue[] = useMemo(() => (Array.isArray(venues) ? (venues as any) : []), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const coords = await buildVenueCoordinates(list);
+        if (!cancelled) {
+          setPins(coords);
+        }
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [list]);
+
+  const fitToAllMarkers = () => {
+    const coordinates: LatLng[] = pins.map(p => ({ latitude: p.lat, longitude: p.lng }));
+    if (mapRef.current && coordinates.length > 0) {
+      mapRef.current.fitToCoordinates(coordinates, {
+        edgePadding: { top: 60, right: 60, bottom: 60 + bottom, left: 60 },
+        animated: true,
+      });
+    }
   };
+
+  useEffect(() => {
+    if (pins.length > 0) {
+      // Fit once pins are ready
+      setTimeout(fitToAllMarkers, 300);
+    }
+  }, [pins]);
+
+  if (Platform.OS === 'web') {
+    return (
+      <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? top : 0 }]} edges={['left','right','bottom']}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Map</Text>
+          <Text style={styles.subtitle}>Explore dog‑friendly spots</Text>
+        </View>
+        <View style={styles.mapPlaceholder}>
+          <Ionicons name="map-outline" size={48} color="#7B8A97" />
+          <Text style={styles.mapText}>{isLoading ? 'Loading…' : 'Map is native-only for now'}</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.safe, { paddingTop: Platform.OS === 'android' ? top : 0 }]} edges={['left','right','bottom']}>
@@ -34,20 +118,32 @@ export default function MapScreen() {
         <Text style={styles.subtitle}>Explore dog‑friendly spots</Text>
       </View>
 
-      {/* Placeholder map area */}
-      <View style={styles.mapPlaceholder}>
-        <Ionicons name="map-outline" size={48} color="#7B8A97" />
-        <Text style={styles.mapText}>Interactive map coming soon</Text>
-      </View>
+      <View style={styles.mapWrap}>
+        <MapView
+          ref={(r) => (mapRef.current = r)}
+          style={StyleSheet.absoluteFill}
+          initialRegion={{
+            latitude: 52.335,
+            longitude: -1.9,
+            latitudeDelta: 2.2,
+            longitudeDelta: 2.2,
+          }}
+        >
+          {pins.map((v) => (
+            <Marker
+              key={String(v.id)}
+              coordinate={{ latitude: v.lat, longitude: v.lng }}
+              title={v.name}
+              description={v.address || ''}
+              onCalloutPress={() => router.push({ pathname: '/venue/[id]', params: { id: String(v.id) } })}
+            />
+          ))}
+        </MapView>
 
-      {/* Quick list to simulate markers for now */}
-      <View style={[styles.listWrap, { paddingBottom: bottom + 8 }]}>
-        {items.map(v => (
-          <TouchableOpacity key={v.id} style={styles.row} onPress={() => onOpenMap(v.id)}>
-            <Ionicons name="location-outline" size={18} color="#0EA5A1" style={{ marginRight: 8 }} />
-            <Text style={styles.rowTxt} numberOfLines={1}>{v.title}</Text>
-          </TouchableOpacity>
-        ))}
+        {/* Recenter control */}
+        <TouchableOpacity style={styles.fab} onPress={fitToAllMarkers}>
+          <Ionicons name="locate-outline" color="#0EA5A1" size={22} />
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -72,18 +168,29 @@ const styles = StyleSheet.create({
   },
   mapText: { marginTop: 8, color: '#6B7B8C', fontWeight: '700' },
 
-  listWrap: { marginTop: 12, paddingHorizontal: 16, gap: 8 },
-  row: {
-    flexDirection: 'row',
+  mapWrap: {
+    flex: 1,
+    marginTop: 8,
+    marginHorizontal: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#DCE7ED',
+    backgroundColor: '#E9F2F6',
+  },
+  fab: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'white',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E6EEF2',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
   },
-  rowTxt: { color: '#1F2D3D', fontWeight: '700', flexShrink: 1 },
 });
 
 
